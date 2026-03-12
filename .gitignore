@@ -1,0 +1,15 @@
+# Python dependencies
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Telethon sessions
+sessions/*.session
+sessions/*.session-journal
+
+# Frontend
+node_modules/
+dist/
+.DS_Store
