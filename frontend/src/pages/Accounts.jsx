@@ -32,8 +32,7 @@ const Accounts = () => {
         fetchAccounts();
     }, []);
 
-    const handleAddAccount = async (e) => {
-        e.preventDefault();
+    const handleAddAccount = async (method) => {
         setLoading(true);
         try {
             const res = await axios.post('/api/admin/accounts/', formData, {
@@ -41,20 +40,59 @@ const Accounts = () => {
             });
             setCurrentAccId(res.data.id);
             
-            // Send code immediately
-            const codeRes = await axios.post(`/api/admin/accounts/${res.data.id}/send-code`, {}, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setPhoneCodeHash(codeRes.data.phone_code_hash);
-            setStep(2);
+            if (method === 'qr') {
+                startQRLogin(res.data.id);
+                setLoading(false);
+            } else {
+                const codeRes = await axios.post(`/api/admin/accounts/${res.data.id}/send-code`, {}, {
+                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                });
+                setPhoneCodeHash(codeRes.data.phone_code_hash);
+                setStep(2);
+                setLoading(false);
+            }
         } catch (err) {
             const msg = err.response?.data?.detail || 'Ошибка при добавлении аккаунта';
             alert(`Ошибка: ${msg}`);
-            // If account was created but sending code failed, we might want to clean up or allow retry.
-            // For now, just alert and keep the modal open.
-        } finally {
             setLoading(false);
         }
+    };
+    
+    const startQRLogin = (accountId) => {
+        setStep(3);
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socketUrl = `${protocol}//${window.location.host}/api/admin/accounts/${accountId}/qr`;
+        const socket = new WebSocket(socketUrl);
+        
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'qr_url') {
+                setQrUrl(data.url);
+            } else if (data.type === 'success') {
+                alert('Успешная авторизация!');
+                setIsModalOpen(false);
+                setStep(1);
+                setFormData({ phone: '', api_id: '', api_hash: '' });
+                fetchAccounts();
+                socket.close();
+            } else if (data.type === '2fa_required') {
+                alert('Требуется облачный пароль 2FA! Пожалуйста, временно отключите его в настройках Telegram или используйте вход по СМС.');
+                socket.close();
+                setIsModalOpen(false);
+            } else if (data.type === 'error') {
+                alert(`Ошибка: ${data.message}`);
+                socket.close();
+                setIsModalOpen(false);
+            }
+        };
+        
+        socket.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            alert('Ошибка соединения с сервером при генерации QR');
+            setIsModalOpen(false);
+        };
+        
+        setWs(socket);
     };
 
     const handleVerifyCode = async (e) => {
@@ -93,20 +131,9 @@ const Accounts = () => {
     };
 
     const handleAuthorizeExisting = async (acc) => {
-        setLoading(true);
-        try {
-            setCurrentAccId(acc.id);
-            const codeRes = await axios.post(`/api/admin/accounts/${acc.id}/send-code`, {}, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-            });
-            setPhoneCodeHash(codeRes.data.phone_code_hash);
-            setIsModalOpen(true);
-            setStep(2);
-        } catch (err) {
-            alert('Ошибка при отправке кода');
-        } finally {
-            setLoading(false);
-        }
+        setCurrentAccId(acc.id);
+        setIsModalOpen(true);
+        startQRLogin(acc.id);
     }
 
     return (
@@ -195,7 +222,7 @@ const Accounts = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="glass w-full max-w-lg rounded-[2.5rem] border border-slate-800 p-10 relative shadow-2xl overflow-hidden">
                         <button 
-                            onClick={() => { setIsModalOpen(false); setStep(1); }}
+                            onClick={() => { ws?.close(); setIsModalOpen(false); setStep(1); }}
                             className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
                         >
                             <X size={32} />
@@ -210,8 +237,8 @@ const Accounts = () => {
                             </p>
                         </div>
 
-                        {step === 1 ? (
-                            <form onSubmit={handleAddAccount} className="space-y-6">
+                        {step === 1 && (
+                            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Номер телефона</label>
                                     <input 
@@ -250,11 +277,31 @@ const Accounts = () => {
                                 <div className="p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-xs text-slate-400 leading-relaxed italic">
                                     Данные можно получить на my.telegram.org. Сервис использует эти данные только для подключения сессии.
                                 </div>
-                                <button disabled={loading} type="submit" className="w-full btn-primary py-5 text-xl font-black shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3">
-                                    {loading ? <Loader2 className="animate-spin" /> : 'Продолжить'}
-                                </button>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        disabled={loading} 
+                                        type="button" 
+                                        onClick={() => {
+                                            if (!formData.phone || !formData.api_id || !formData.api_hash) return alert('Заполните все поля');
+                                            handleAddAccount('sms');
+                                        }}
+                                        className="w-full btn-secondary py-4 font-black flex items-center justify-center gap-3">
+                                        Войти по СМС
+                                    </button>
+                                    <button 
+                                        disabled={loading} 
+                                        type="button" 
+                                        onClick={() => {
+                                            if (!formData.phone || !formData.api_id || !formData.api_hash) return alert('Заполните все поля');
+                                            handleAddAccount('qr');
+                                        }}
+                                        className="w-full btn-primary py-4 font-black shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-3">
+                                        {loading ? <Loader2 className="animate-spin" /> : 'Вход по QR-коду'}
+                                    </button>
+                                </div>
                             </form>
-                        ) : (
+                        )}
+                        {step === 2 && (
                             <form onSubmit={handleVerifyCode} className="space-y-8 text-center">
                                 <div>
                                     <input 
@@ -272,6 +319,27 @@ const Accounts = () => {
                                     {loading ? <Loader2 className="animate-spin" /> : 'Подтвердить вход'}
                                 </button>
                             </form>
+                        )}
+                        {step === 3 && (
+                            <div className="flex flex-col items-center space-y-6">
+                                <h4 className="text-xl font-bold">Отсканируйте код через приложение Telegram</h4>
+                                <p className="text-slate-400 text-center text-sm">Настройки -&gt; Устройства -&gt; Подключить устройство</p>
+                                
+                                {qrUrl ? (
+                                    <div className="p-4 bg-white rounded-2xl shadow-xl shadow-indigo-500/10 scale-105">
+                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrUrl)}`} alt="Telegram QR Login" className="w-64 h-64" />
+                                    </div>
+                                ) : (
+                                    <div className="w-64 h-64 flex items-center justify-center bg-slate-800 rounded-2xl animate-pulse">
+                                        <Loader2 className="animate-spin text-indigo-500 w-12 h-12" />
+                                    </div>
+                                )}
+                                <div className="text-center mt-4">
+                                    <Loader2 className="animate-spin inline-block mr-2 w-4 h-4 text-slate-500" />
+                                    <span className="text-slate-500 text-sm">Ожидание авторизации...</span>
+                                </div>
+                                <button onClick={() => { ws?.close(); setIsModalOpen(false); setStep(1); }} className="w-full btn-secondary py-4 font-black mt-4">Отмена</button>
+                            </div>
                         )}
                     </div>
                 </div>
