@@ -6,14 +6,29 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        // In a real app, this would be an API call
-        if (password === 'admin') {
-            localStorage.setItem('token', 'dummy-token');
-            window.location.reload();
-        } else {
-            setError('Неверный пароль');
+        setError('');
+        try {
+            const formData = new FormData();
+            formData.append('username', 'admin');
+            formData.append('password', password);
+
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('token', data.access_token);
+                window.location.reload();
+            } else {
+                setError('Неверный пароль');
+            }
+        } catch (err) {
+            setError('Ошибка подключения к серверу');
         }
     };
+
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
