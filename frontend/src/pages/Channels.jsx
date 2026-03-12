@@ -47,7 +47,6 @@ const Channels = () => {
             // Usually id is assigned by DB, so we might need a separate schema for creation or handle id on FE.
             // Assuming backend handles it.
             await axios.post('/api/admin/channels/', {
-                id: 0, // Placeholder if required
                 username: formData.username.replace('@', ''),
                 topic_id: parseInt(formData.topic_id),
                 is_joined: false
@@ -58,7 +57,8 @@ const Channels = () => {
             setFormData(prev => ({ ...prev, username: '' }));
             fetchData();
         } catch (err) {
-            alert('Ошибка при добавлении канала. Убедитесь, что ID/Username корректны.');
+            const msg = err.response?.data?.detail || err.message;
+            alert(`Ошибка при добавлении канала: ${JSON.stringify(msg)}`);
         } finally {
             setSubmitting(false);
         }

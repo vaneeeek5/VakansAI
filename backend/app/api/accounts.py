@@ -42,7 +42,7 @@ async def send_code(account_id: int, db: AsyncSession = Depends(get_db)):
     try:
         await client.connect()
         sent = await client.send_code_request(db_account.phone)
-        db_account.session_string = session.save()
+        db_account.session_string = "WAITING:" + sent.phone_code_hash + ":" + session.save()
         await db.commit()
         return {"phone_code_hash": sent.phone_code_hash}
     except Exception as e:
@@ -58,11 +58,17 @@ async def sign_in(account_id: int, code: str, phone_code_hash: str, db: AsyncSes
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    if not db_account.session_string:
+    if not db_account.session_string or not db_account.session_string.startswith("WAITING:"):
          raise HTTPException(status_code=400, detail="No active session found. Request code first.")
          
+    try:
+        parts = db_account.session_string.split(":", 2)
+        real_session_str = parts[2]
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session format.")
+         
     client = TelegramClient(
-        StringSession(db_account.session_string), db_account.api_id, db_account.api_hash,
+        StringSession(real_session_str), db_account.api_id, db_account.api_hash,
         device_model="Desktop", system_version="Windows 11", app_version="1.0"
     )
     
@@ -91,7 +97,15 @@ async def qr_login_ws(websocket: WebSocket, account_id: int, db: AsyncSession = 
         await websocket.close()
         return
 
-    session = StringSession(db_account.session_string or "")
+    is_waiting = db_account.session_string and db_account.session_string.startswith("WAITING:")
+    session_str = db_account.session_string or ""
+    if is_waiting:
+        try:
+            session_str = db_account.session_string.split(":", 2)[2]
+        except Exception:
+            session_str = ""
+            
+    session = StringSession(session_str)
     client = TelegramClient(
         session, db_account.api_id, db_account.api_hash,
         device_model="Desktop", system_version="Windows 11", app_version="1.0"

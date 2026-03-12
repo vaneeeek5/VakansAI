@@ -31,7 +31,7 @@ class UserbotManager:
             accounts = result.scalars().all()
             
             for acc in accounts:
-                if acc.session_string:
+                if acc.session_string and not acc.session_string.startswith("WAITING:"):
                     asyncio.create_task(self.start_client(acc))
 
     async def start_client(self, acc: TgAccount):

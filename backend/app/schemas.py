@@ -62,7 +62,6 @@ class Topic(TopicBase):
         from_attributes = True
 
 class ChannelBase(BaseModel):
-    id: int
     title: Optional[str] = None
     username: Optional[str] = None
     link: Optional[str] = None
@@ -74,6 +73,7 @@ class ChannelCreate(ChannelBase):
     pass
 
 class Channel(ChannelBase):
+    id: int
     added_at: datetime
 
     class Config:

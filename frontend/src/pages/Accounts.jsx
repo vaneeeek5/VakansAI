@@ -185,7 +185,7 @@ const Accounts = () => {
                         </div>
 
                         <div className="flex gap-4">
-                            {!acc.session_string ? (
+                            {(!acc.session_string || acc.session_string.startsWith('WAITING:')) ? (
                                 <button 
                                     onClick={() => handleAuthorizeExisting(acc)}
                                     className="flex-1 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95"

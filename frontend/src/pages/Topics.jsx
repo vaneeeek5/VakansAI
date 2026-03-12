@@ -55,7 +55,8 @@ const Topics = () => {
             setFormData({ name: '', emoji: '📁', description: '', keywords: '', minus_words: '' });
             fetchTopics();
         } catch (err) {
-            alert('Ошибка при сохранении тематики');
+            const msg = err.response?.data?.detail || err.message;
+            alert(`Ошибка при сохранении тематики: ${JSON.stringify(msg)}`);
         } finally {
             setLoading(false);
         }
