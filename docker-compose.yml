@@ -3,18 +3,18 @@ version: '3.3'
 services:
   db:
     image: postgres:16-alpine
-    container_name: vakansai_db
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: vacancies
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vakansai_net
     restart: always
 
   app:
     build: .
-    container_name: vakansai_app
     depends_on:
       - db
     ports:
@@ -23,8 +23,13 @@ services:
       - .env
     volumes:
       - ./sessions:/app/sessions
+    networks:
+      - vakansai_net
     restart: always
+
+networks:
+  vakansai_net:
+    driver: bridge
 
 volumes:
   postgres_data:
-
