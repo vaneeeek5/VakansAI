@@ -213,7 +213,4 @@ const Channels = () => {
         </div>
     );
 };
-
-export default Channels;
-
 export default Channels;
