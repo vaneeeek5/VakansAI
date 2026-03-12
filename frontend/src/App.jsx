@@ -7,6 +7,7 @@ import Channels from './pages/Channels';
 import Accounts from './pages/Accounts';
 import Vacancies from './pages/Vacancies';
 import Settings from './pages/Settings';
+import Logs from './pages/Logs';
 import Login from './pages/Login';
 
 const App = () => {
@@ -27,6 +28,7 @@ const App = () => {
                         <Route path="/channels" element={<Channels />} />
                         <Route path="/accounts" element={<Accounts />} />
                         <Route path="/vacancies" element={<Vacancies />} />
+                        <Route path="/logs" element={<Logs />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>

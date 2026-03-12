@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListTree, Radio, Users, Briefcase, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListTree, Radio, Users, Briefcase, Settings, LogOut, Terminal } from 'lucide-react';
 
 const Sidebar = () => {
     const menuItems = [
@@ -9,6 +9,7 @@ const Sidebar = () => {
         { icon: Radio, label: 'Каналы', path: '/channels' },
         { icon: Users, label: 'Аккаунты', path: '/accounts' },
         { icon: Briefcase, label: 'Вакансии', path: '/vacancies' },
+        { icon: Terminal, label: 'Логи', path: '/logs' },
         { icon: Settings, label: 'Настройки', path: '/settings' },
     ];
 
