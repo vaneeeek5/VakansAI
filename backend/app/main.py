@@ -4,10 +4,17 @@ from fastapi.staticfiles import StaticFiles
 import os
 import asyncio
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from .database import engine, Base
 from .api import admin_auth, topics, channels, accounts, settings, vacancies, monitoring
 from .services.bot import bot_manager
 from .services.userbot import manager as userbot_manager
+
 
 app = FastAPI(title="Telegram Vacancy Parser API")
 
@@ -21,13 +28,22 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    # Initialize and start TG Bot
-    await bot_manager.application.initialize()
-    await bot_manager.application.start()
-    await bot_manager.application.updater.start_polling()
-    
-    # Start Userbots
-    asyncio.create_task(userbot_manager.start_all())
+    logger.info("Starting application...")
+    try:
+        # Initialize and start TG Bot
+        logger.info("Initializing Telegram Bot...")
+        await bot_manager.application.initialize()
+        await bot_manager.application.start()
+        await bot_manager.application.updater.start_polling()
+        logger.info("Telegram Bot started.")
+        
+        # Start Userbots
+        logger.info("Starting Userbots...")
+        asyncio.create_task(userbot_manager.start_all())
+        logger.info("Userbot start task created.")
+    except Exception as e:
+        logger.error(f"Error during startup: {e}")
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
