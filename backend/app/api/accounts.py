@@ -31,13 +31,23 @@ async def send_code(account_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Account not found")
     
     session = StringSession()
-    client = TelegramClient(session, db_account.api_id, db_account.api_hash)
-    await client.connect()
-    sent = await client.send_code_request(db_account.phone)
-    db_account.session_string = session.save()
-    await db.commit()
-    await client.disconnect()
-    return {"phone_code_hash": sent.phone_code_hash}
+    client = TelegramClient(
+        session, db_account.api_id, db_account.api_hash,
+        device_model="Desktop", system_version="Windows 11", app_version="1.0"
+    )
+    
+    try:
+        await client.connect()
+        sent = await client.send_code_request(db_account.phone)
+        db_account.session_string = session.save()
+        await db.commit()
+        return {"phone_code_hash": sent.phone_code_hash}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Telegram API Error: {str(e)}")
+    finally:
+        await client.disconnect()
 
 @router.post("/{account_id}/signin")
 async def sign_in(account_id: int, code: str, phone_code_hash: str, db: AsyncSession = Depends(get_db)):
@@ -48,14 +58,23 @@ async def sign_in(account_id: int, code: str, phone_code_hash: str, db: AsyncSes
     if not db_account.session_string:
          raise HTTPException(status_code=400, detail="No active session found. Request code first.")
          
-    client = TelegramClient(StringSession(db_account.session_string), db_account.api_id, db_account.api_hash)
-    await client.connect()
+    client = TelegramClient(
+        StringSession(db_account.session_string), db_account.api_id, db_account.api_hash,
+        device_model="Desktop", system_version="Windows 11", app_version="1.0"
+    )
+    
     try:
+        await client.connect()
         user = await client.sign_in(db_account.phone, code, phone_code_hash=phone_code_hash)
         session_str = client.session.save()
         db_account.session_string = session_str
         db_account.is_active = True
         await db.commit()
+        return {"status": "signed_in"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=f"Telegram API Error: {str(e)}")
     finally:
         await client.disconnect()
-    return {"status": "signed_in"}
+

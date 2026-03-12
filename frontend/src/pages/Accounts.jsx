@@ -48,7 +48,10 @@ const Accounts = () => {
             setPhoneCodeHash(codeRes.data.phone_code_hash);
             setStep(2);
         } catch (err) {
-            alert('Ошибка при добавлении аккаунта');
+            const msg = err.response?.data?.detail || 'Ошибка при добавлении аккаунта';
+            alert(`Ошибка: ${msg}`);
+            // If account was created but sending code failed, we might want to clean up or allow retry.
+            // For now, just alert and keep the modal open.
         } finally {
             setLoading(false);
         }
@@ -70,7 +73,8 @@ const Accounts = () => {
             setOtpCode('');
             fetchAccounts();
         } catch (err) {
-            alert('Неверный код или ошибка сервера');
+            const msg = err.response?.data?.detail || 'Неверный код или ошибка сервера';
+            alert(`Ошибка авторизации: ${msg}`);
         } finally {
             setLoading(false);
         }
