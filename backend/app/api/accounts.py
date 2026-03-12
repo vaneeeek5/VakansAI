@@ -30,9 +30,12 @@ async def send_code(account_id: int, db: AsyncSession = Depends(get_db)):
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    client = TelegramClient(StringSession(), db_account.api_id, db_account.api_hash)
+    session = StringSession()
+    client = TelegramClient(session, db_account.api_id, db_account.api_hash)
     await client.connect()
     sent = await client.send_code_request(db_account.phone)
+    db_account.session_string = session.save()
+    await db.commit()
     await client.disconnect()
     return {"phone_code_hash": sent.phone_code_hash}
 
@@ -42,12 +45,16 @@ async def sign_in(account_id: int, code: str, phone_code_hash: str, db: AsyncSes
     if not db_account:
         raise HTTPException(status_code=404, detail="Account not found")
     
-    client = TelegramClient(StringSession(), db_account.api_id, db_account.api_hash)
+    if not db_account.session_string:
+         raise HTTPException(status_code=400, detail="No active session found. Request code first.")
+         
+    client = TelegramClient(StringSession(db_account.session_string), db_account.api_id, db_account.api_hash)
     await client.connect()
     try:
         user = await client.sign_in(db_account.phone, code, phone_code_hash=phone_code_hash)
         session_str = client.session.save()
         db_account.session_string = session_str
+        db_account.is_active = True
         await db.commit()
     finally:
         await client.disconnect()

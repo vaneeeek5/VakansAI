@@ -88,8 +88,18 @@ class BotManager:
             await update.message.reply_text(msg)
 
     async def stop(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # Implementation to delete all subscriptions for the user
-        pass
+        user_id = update.effective_user.id
+        async with AsyncSessionLocal() as db:
+            sub_res = await db.execute(select(Subscriber).where(Subscriber.telegram_id == user_id))
+            sub = sub_res.scalar_one_or_none()
+            if not sub:
+                return await update.message.reply_text("Вы не зарегистрированы.")
+                
+            from sqlalchemy import delete
+            await db.execute(delete(SubscriberTopic).where(SubscriberTopic.subscriber_id == sub.id))
+            await db.commit()
+            
+            await update.message.reply_text("Вы успешно отписались от всех тематик. 🔕")
 
     async def send_vacancy(self, vacancy: Vacancy, topic: Topic, channel: Channel):
         # Forward or send message to all subscribers of this topic

@@ -4,8 +4,9 @@ from sqlalchemy.future import select
 from typing import List
 
 from ..database import get_db
-from ..models import Channel
+from ..models import Channel, Vacancy
 from ..schemas import ChannelCreate, Channel as ChannelSchema
+from sqlalchemy import delete
 
 router = APIRouter()
 
@@ -30,6 +31,9 @@ async def delete_channel(channel_id: int, db: AsyncSession = Depends(get_db)):
     db_channel = await db.get(Channel, channel_id)
     if not db_channel:
         raise HTTPException(status_code=404, detail="Channel not found")
+        
+    await db.execute(delete(Vacancy).where(Vacancy.channel_id == channel_id))
+    
     await db.delete(db_channel)
     await db.commit()
     return {"status": "ok"}

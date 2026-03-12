@@ -4,8 +4,9 @@ from sqlalchemy.future import select
 from typing import List
 
 from ..database import get_db
-from ..models import Topic
+from ..models import Topic, Channel, Vacancy, SubscriberTopic
 from ..schemas import TopicCreate, Topic as TopicSchema
+from sqlalchemy import delete
 
 router = APIRouter()
 
@@ -45,6 +46,11 @@ async def delete_topic(topic_id: int, db: AsyncSession = Depends(get_db)):
     db_topic = await db.get(Topic, topic_id)
     if not db_topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+        
+    await db.execute(delete(SubscriberTopic).where(SubscriberTopic.topic_id == topic_id))
+    await db.execute(delete(Vacancy).where(Vacancy.topic_id == topic_id))
+    await db.execute(delete(Channel).where(Channel.topic_id == topic_id))
+    
     await db.delete(db_topic)
     await db.commit()
     return {"status": "ok"}
