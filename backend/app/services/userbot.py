@@ -15,6 +15,10 @@ class UserbotManager:
     async def init_ai(self, db):
         # Load AI settings from DB or ENV
         api_key = os.getenv("AI_API_KEY")
+        if not api_key or api_key == "pending":
+            print("AI Filter is disabled: API key is not set.")
+            return
+
         base_url = os.getenv("AI_API_BASE_URL", "https://api.openai.com/v1")
         model = os.getenv("AI_MODEL", "gpt-4o-mini")
         self.ai_filter = AIFilter(api_key, base_url, model)
@@ -67,7 +71,11 @@ class UserbotManager:
                 return
 
             # AI filtering
-            ai_res = await self.ai_filter.filter_vacancy(topic.ai_description, text)
+            if self.ai_filter:
+                ai_res = await self.ai_filter.filter_vacancy(topic.ai_description, text)
+            else:
+                ai_res = {"is_vacancy": True, "is_suitable": True, "reason": "AI фильтрация временно отключена"}
+            
             if ai_res and ai_res.get("is_vacancy") and ai_res.get("is_suitable"):
                 # Save vacancy
                 try:
