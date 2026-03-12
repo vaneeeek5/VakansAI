@@ -2,9 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
+import asyncio
 
 from .database import engine, Base
 from .api import admin_auth, topics, channels, accounts, settings, vacancies, monitoring
+from .services.bot import bot_manager
+from .services.userbot import manager as userbot_manager
 
 app = FastAPI(title="Telegram Vacancy Parser API")
 
@@ -15,6 +18,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    # Initialize and start TG Bot
+    await bot_manager.application.initialize()
+    await bot_manager.application.start()
+    await bot_manager.application.updater.start_polling()
+    
+    # Start Userbots
+    asyncio.create_task(userbot_manager.start_all())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Stop TG Bot
+    await bot_manager.application.updater.stop()
+    await bot_manager.application.stop()
+    await bot_manager.application.shutdown()
 
 # API Routers
 app.include_router(admin_auth.router, prefix="/api/admin", tags=["Admin Auth"])
