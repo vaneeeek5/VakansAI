@@ -1,0 +1,7 @@
+import os
+import sys
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
+sys.path.append(parent_dir)
