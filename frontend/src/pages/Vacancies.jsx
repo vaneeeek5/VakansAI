@@ -60,8 +60,9 @@ const Vacancies = () => {
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="p-3 bg-indigo-500/10 text-indigo-400 rounded-xl font-bold text-sm tracking-widest uppercase">
-                                    Разработка ПО
+                                    {v.topic?.name || 'Без темы'}
                                 </div>
+
                                 <div className="flex items-center gap-2 text-slate-500 font-medium">
                                     <Calendar size={16} />
                                     {new Date(v.created_at).toLocaleString()}

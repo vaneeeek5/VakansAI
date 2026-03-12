@@ -3,7 +3,13 @@ import { Activity, Briefcase, Radio, Zap } from 'lucide-react';
 import axios from 'axios';
 
 const Dashboard = () => {
-    const [stats, setStats] = useState({ total_vacancies: 0, today_vacancies: 0 });
+    const [stats, setStats] = useState({ 
+        total_vacancies: 0, 
+        today_vacancies: 0,
+        total_channels: 0,
+        total_accounts: 0,
+        recent_logs: []
+    });
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -22,9 +28,10 @@ const Dashboard = () => {
     const cards = [
         { label: 'Всего вакансий', value: stats.total_vacancies, icon: Briefcase, color: 'text-blue-400', bg: 'bg-blue-400/10' },
         { label: 'Найдено сегодня', value: stats.today_vacancies, icon: Zap, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-        { label: 'Активных каналов', value: '12', icon: Radio, color: 'text-green-400', bg: 'bg-green-400/10' },
-        { label: 'Аккаунтов', value: '2', icon: Activity, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+        { label: 'Активных каналов', value: stats.total_channels, icon: Radio, color: 'text-green-400', bg: 'bg-green-400/10' },
+        { label: 'Аккаунтов', value: stats.total_accounts, icon: Activity, color: 'text-purple-400', bg: 'bg-purple-400/10' },
     ];
+
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -57,18 +64,21 @@ const Dashboard = () => {
                 <div className="glass p-8 rounded-2xl border border-slate-800 h-96">
                     <h3 className="text-xl font-bold mb-6">Последние уведомления</h3>
                     <div className="space-y-4 overflow-y-auto max-h-64 pr-4 custom-scrollbar">
-                        {[1, 2, 3].map((_, i) => (
+                        {stats.recent_logs?.length > 0 ? stats.recent_logs.map((log, i) => (
                             <div key={i} className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
                                 <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-lg">
                                     <Zap size={16} />
                                 </div>
                                 <div>
-                                    <p className="font-medium">Найдена вакансия: Python Developer</p>
-                                    <p className="text-sm text-slate-400">Канал: Job Hunter • 2 минуты назад</p>
+                                    <p className="font-medium">{log.message}</p>
+                                    <p className="text-sm text-slate-400">{new Date(log.created_at).toLocaleString()}</p>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p className="text-center text-slate-500 mt-10">Нет новых уведомлений</p>
+                        )}
                     </div>
+
                 </div>
             </div>
         </div>

@@ -69,8 +69,9 @@ const Channels = () => {
                                 </td>
                                 <td className="px-8 py-6">
                                     <span className="px-4 py-1.5 bg-slate-800 border border-slate-700 rounded-full text-sm text-slate-300">
-                                        Разработка ПО
+                                        {channel.topic?.name || 'Общий'}
                                     </span>
+
                                 </td>
                                 <td className="px-8 py-6 text-center font-bold text-slate-200">
                                     {channel.members_count?.toLocaleString() || '1.2k'}
