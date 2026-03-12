@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
-from ..auth import authenticate_admin, create_access_token, ADMIN_PASSWORD # Need to implement authenticate_admin
+from ..auth import create_access_token, ADMIN_PASSWORD # Need to implement authenticate_admin
 
 router = APIRouter()
 
