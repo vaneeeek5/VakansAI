@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class TgAccountBase(BaseModel):
@@ -38,6 +38,51 @@ class VacancySchema(BaseModel):
     author: Optional[str] = None
     message_link: str
     ai_reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class TopicBase(BaseModel):
+    name: str
+    emoji: Optional[str] = None
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = []
+    minus_words: Optional[List[str]] = []
+    ai_description: Optional[str] = None
+
+class TopicCreate(TopicBase):
+    pass
+
+class Topic(TopicBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ChannelBase(BaseModel):
+    id: int
+    title: Optional[str] = None
+    username: Optional[str] = None
+    link: Optional[str] = None
+    topic_id: int
+    members_count: Optional[int] = 0
+    is_joined: bool = False
+
+class ChannelCreate(ChannelBase):
+    pass
+
+class Channel(ChannelBase):
+    added_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class LogSchema(BaseModel):
+    id: int
+    level: str
+    message: str
     created_at: datetime
 
     class Config:
