@@ -20,7 +20,7 @@ echo "--- 4. Ожидание запуска базы данных (10 сек) -
 sleep 10
 
 echo "--- 5. Применение миграций базы данных ---"
-docker exec ${PROJECT_NAME}_app_1 alembic upgrade head
+docker exec vakansai_app alembic upgrade head
 
 echo "------------------------------------------------"
 echo "ГОТОВО! Админка должна быть доступна по адресу:"
