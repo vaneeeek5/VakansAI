@@ -1,23 +1,109 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, ShieldAlert, Trash2, Key, Phone, CheckCircle2, Users } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Trash2, Key, Phone, CheckCircle2, Users, X, Loader2 } from 'lucide-react';
 import axios from 'axios';
 
 const Accounts = () => {
     const [accounts, setAccounts] = useState([]);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [step, setStep] = useState(1); // 1: Info, 2: Code
+    const [loading, setLoading] = useState(false);
+    const [currentAccId, setCurrentAccId] = useState(null);
+    const [phoneCodeHash, setPhoneCodeHash] = useState('');
+    
+    const [formData, setFormData] = useState({
+        phone: '',
+        api_id: '',
+        api_hash: ''
+    });
+    const [otpCode, setOtpCode] = useState('');
+
+    const fetchAccounts = async () => {
+        try {
+            const res = await axios.get('/api/admin/accounts/', {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setAccounts(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     useEffect(() => {
-        const fetchAccounts = async () => {
-            try {
-                const res = await axios.get('/api/admin/accounts/', {
-                    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                });
-                setAccounts(res.data);
-            } catch (err) {
-                console.error(err);
-            }
-        };
         fetchAccounts();
     }, []);
+
+    const handleAddAccount = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await axios.post('/api/admin/accounts/', formData, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setCurrentAccId(res.data.id);
+            
+            // Send code immediately
+            const codeRes = await axios.post(`/api/admin/accounts/${res.data.id}/send-code`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setPhoneCodeHash(codeRes.data.phone_code_hash);
+            setStep(2);
+        } catch (err) {
+            alert('Ошибка при добавлении аккаунта');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyCode = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await axios.post(`/api/admin/accounts/${currentAccId}/signin`, {
+                code: otpCode,
+                phone_code_hash: phoneCodeHash
+            }, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setIsModalOpen(false);
+            setStep(1);
+            setFormData({ phone: '', api_id: '', api_hash: '' });
+            setOtpCode('');
+            fetchAccounts();
+        } catch (err) {
+            alert('Неверный код или ошибка сервера');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('Вы уверены, что хотите удалить этот аккаунт?')) return;
+        try {
+            await axios.delete(`/api/admin/accounts/${id}`, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            fetchAccounts();
+        } catch (err) {
+            alert('Ошибка при удалении');
+        }
+    };
+
+    const handleAuthorizeExisting = async (acc) => {
+        setLoading(true);
+        try {
+            setCurrentAccId(acc.id);
+            const codeRes = await axios.post(`/api/admin/accounts/${acc.id}/send-code`, {}, {
+                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            setPhoneCodeHash(codeRes.data.phone_code_hash);
+            setIsModalOpen(true);
+            setStep(2);
+        } catch (err) {
+            alert('Ошибка при отправке кода');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     return (
         <div className="space-y-8">
@@ -26,7 +112,10 @@ const Accounts = () => {
                     <h2 className="text-3xl font-bold">Аккаунты Telegram</h2>
                     <p className="text-slate-400">Управление сессиями для парсинга каналов</p>
                 </div>
-                <button className="btn-primary flex items-center gap-2 px-8 py-4 text-lg">
+                <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="btn-primary flex items-center gap-2 px-8 py-4 text-lg"
+                >
                     <Key size={20} />
                     Добавить новый аккаунт
                 </button>
@@ -55,16 +144,21 @@ const Accounts = () => {
                                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20' 
                                     : 'bg-red-500/10 text-red-400 border-red-400/20'
                                 }`}>
-                                    {acc.is_active ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
+                                    {acc.is_active ? <ShieldCheck size(16) /> : <ShieldAlert size(16) />}
                                     {acc.is_active ? 'Активен' : 'Ошибка'}
                                 </span>
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2">Добавлен 12.03.2024</p>
+                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2 font-mono">
+                                    {new Date(acc.created_at || Date.now()).toLocaleDateString()}
+                                </p>
                             </div>
                         </div>
 
                         <div className="flex gap-4">
                             {!acc.session_string ? (
-                                <button className="flex-1 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95">
+                                <button 
+                                    onClick={() => handleAuthorizeExisting(acc)}
+                                    className="flex-1 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-lg transition-all active:scale-95"
+                                >
                                     Авторизовать
                                 </button>
                             ) : (
@@ -73,21 +167,111 @@ const Accounts = () => {
                                     Готов к работе
                                 </div>
                             )}
-                            <button className="px-6 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all">
+                            <button 
+                                onClick={() => handleDelete(acc.id)}
+                                className="px-6 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl transition-all"
+                            >
                                 <Trash2 size={24} />
                             </button>
                         </div>
                     </div>
                 )) : (
                     <div className="col-span-2 glass p-20 rounded-[3rem] border border-dashed border-slate-700 flex flex-col items-center justify-center text-center">
-                        <div className="p-6 bg-slate-800 rounded-full mb-6">
-                            <Users size={48} className="text-slate-600" />
+                        <div className="p-6 bg-slate-800 rounded-full mb-6 text-slate-600">
+                            <Users size={48} />
                         </div>
                         <h3 className="text-2xl font-bold mb-2 text-slate-300">Нет подключенных аккаунтов</h3>
                         <p className="text-slate-500 max-w-sm">Добавьте хотя бы один аккаунт Telegram для запуска автоматического парсинга вакансий</p>
                     </div>
                 )}
             </div>
+
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="glass w-full max-w-lg rounded-[2.5rem] border border-slate-800 p-10 relative shadow-2xl overflow-hidden">
+                        <button 
+                            onClick={() => { setIsModalOpen(false); setStep(1); }}
+                            className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
+                        >
+                            <X size={32} />
+                        </button>
+
+                        <div className="mb-10">
+                            <h3 className="text-3xl font-black mb-2">
+                                {step === 1 ? 'Новый аккаунт' : 'Подтверждение'}
+                            </h3>
+                            <p className="text-slate-400 font-medium">
+                                {step === 1 ? 'Введите данные вашего API приложения' : 'Введите код из Telegram'}
+                            </p>
+                        </div>
+
+                        {step === 1 ? (
+                            <form onSubmit={handleAddAccount} className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">Номер телефона</label>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="+79991234567" 
+                                        className="input-field py-4"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">API ID</label>
+                                        <input 
+                                            required
+                                            type="text" 
+                                            placeholder="123456" 
+                                            className="input-field py-4"
+                                            value={formData.api_id}
+                                            onChange={(e) => setFormData({...formData, api_id: e.target.value})}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-500 uppercase tracking-widest mb-3">API Hash</label>
+                                        <input 
+                                            required
+                                            type="text" 
+                                            placeholder="abc123..." 
+                                            className="input-field py-4"
+                                            value={formData.api_hash}
+                                            onChange={(e) => setFormData({...formData, api_hash: e.target.value})}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-xs text-slate-400 leading-relaxed italic">
+                                    Данные можно получить на my.telegram.org. Сервис использует эти данные только для подключения сессии.
+                                </div>
+                                <button disabled={loading} type="submit" className="w-full btn-primary py-5 text-xl font-black shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3">
+                                    {loading ? <Loader2 className="animate-spin" /> : 'Продолжить'}
+                                </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleVerifyCode} className="space-y-8 text-center">
+                                <div>
+                                    <input 
+                                        required
+                                        type="text" 
+                                        placeholder="Код из СМС" 
+                                        className="input-field py-6 text-3xl font-black tracking-[0.5em] text-center"
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                                <p className="text-slate-400">Код отправлен в официальное приложение Telegram на вашем устройстве.</p>
+                                <button disabled={loading} type="submit" className="w-full btn-primary py-5 text-xl font-black shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3">
+                                    {loading ? <Loader2 className="animate-spin" /> : 'Подтвердить вход'}
+                                </button>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
