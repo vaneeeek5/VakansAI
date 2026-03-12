@@ -144,7 +144,7 @@ const Accounts = () => {
                                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-400/20' 
                                     : 'bg-red-500/10 text-red-400 border-red-400/20'
                                 }`}>
-                                    {acc.is_active ? <ShieldCheck size(16) /> : <ShieldAlert size(16) />}
+                                    {acc.is_active ? <ShieldCheck size={16} /> : <ShieldAlert size={16} />}
                                     {acc.is_active ? 'Активен' : 'Ошибка'}
                                 </span>
                                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-2 font-mono">
